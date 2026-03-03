@@ -1,18 +1,440 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PA Shipbuilding and Energy Projects Map</title>
-    <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PA 조선·에너지 프로젝트 위치 지도</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0a1628; color: #e0e8f0; }
+  
+  .header {
+    background: linear-gradient(135deg, #0a1f44, #1a3a6b);
+    padding: 20px 30px;
+    border-bottom: 2px solid #2d6db5;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  .header h1 { font-size: 20px; color: #7ab8f5; font-weight: 700; }
+  .header .sub { font-size: 13px; color: #8fa8c8; margin-top: 4px; }
+  .flag { font-size: 28px; }
+
+  .container { display: flex; height: calc(100vh - 80px); }
+
+  #map { flex: 1; min-height: 500px; }
+
+  .sidebar {
+    width: 340px;
+    background: #0d1f38;
+    overflow-y: auto;
+    border-left: 2px solid #1e3d6e;
+  }
+  .sidebar-title {
+    padding: 14px 18px;
+    background: #122040;
+    font-size: 13px;
+    font-weight: 700;
+    color: #7ab8f5;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #1e3d6e;
+    text-transform: uppercase;
+  }
+  .project-card {
+    border-bottom: 1px solid #1a3358;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .project-card:hover { background: #132847; }
+  .project-card.active { background: #163457; border-left: 4px solid #4da6ff; }
+  .project-header {
+    padding: 12px 16px 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .project-icon {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .project-name { font-size: 14px; font-weight: 700; color: #c8dff5; }
+  .project-loc { font-size: 11px; color: #6b8aad; margin-top: 2px; }
+  .project-body { padding: 0 16px 12px 62px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+  .tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600; letter-spacing: 0.3px;
+  }
+  .tag-area { background: #1a3a5c; color: #7ab8f5; }
+  .tag-invest { background: #1a3d1a; color: #6dce6d; }
+  .tag-jobs { background: #3a2a00; color: #f5c842; }
+  .tag-status { background: #2a1a3a; color: #c97ef5; }
+
+  .detail-row { font-size: 12px; color: #8fa8c8; margin-bottom: 4px; display: flex; gap: 6px; }
+  .detail-row .label { color: #5a7a9a; width: 60px; flex-shrink: 0; }
+  .detail-row .val { color: #c8dff5; }
+
+  .entry-section {
+    margin-top: 8px;
+    background: #0c1e35;
+    border-radius: 6px;
+    padding: 8px 10px;
+    border-left: 3px solid #2d7a3a;
+  }
+  .entry-title { font-size: 11px; color: #6dce6d; font-weight: 700; margin-bottom: 4px; }
+  .entry-item { font-size: 11px; color: #8fa8c8; margin-bottom: 2px; padding-left: 8px; position: relative; }
+  .entry-item::before { content: '▸'; position: absolute; left: 0; color: #4da6ff; }
+
+  .legend {
+    padding: 12px 16px;
+    background: #091a30;
+    border-top: 1px solid #1e3d6e;
+  }
+  .legend-title { font-size: 11px; color: #5a7a9a; margin-bottom: 8px; font-weight: 700; text-transform: uppercase; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #8fa8c8; margin-bottom: 5px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+
+  .popup-custom .leaflet-popup-content-wrapper {
+    background: #0d1f38; border: 1px solid #2d6db5; border-radius: 8px;
+  }
+  .popup-custom .leaflet-popup-tip { background: #0d1f38; }
+
+  @media (max-width: 768px) {
+    .container { flex-direction: column; }
+    .sidebar { width: 100%; height: 50vh; }
+    #map { height: 50vh; }
+  }
+</style>
 </head>
 <body>
-    <header>
-        <h1>PA Shipbuilding and Energy Projects Map</h1>
-    </header>
-    <main>
-        <div id="map"></div>
-    </main>
-    <script src="script.js"></script>
+
+<div class="header">
+  <div class="flag">🇰🇷🤝🇺🇸</div>
+  <div>
+    <div class="h1" style="font-size:18px;font-weight:700;color:#7ab8f5;">PA 조선·에너지 프로젝트 위치 현황</div>
+    <div class="sub">Pennsylvania 조선기자재 진출 대상 프로젝트 | 2026.03 기준</div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="map"></div>
+  <div class="sidebar">
+    <div class="sidebar-title">📍 프로젝트 목록 (클릭 → 지도 이동)</div>
+
+    <!-- Card 1 -->
+    <div class="project-card" id="card-1" onclick="flyTo(0)">
+      <div class="project-header">
+        <div class="project-icon" style="background:#0d2d6e;">🚢</div>
+        <div>
+          <div class="project-name">① 한화 필리 조선소</div>
+          <div class="project-loc">📌 2100 Kitty Hawk Ave, Philadelphia, PA 19112</div>
+        </div>
+      </div>
+      <div class="project-body">
+        <div class="tag-row">
+          <span class="tag tag-area">118 acres (≈47.7만㎡)</span>
+          <span class="tag tag-invest">투자 $50억</span>
+          <span class="tag tag-jobs">2,000~5,000 일자리</span>
+          <span class="tag tag-status">🟢 가동중</span>
+        </div>
+        <div class="detail-row"><span class="label">목표</span><span class="val">2030년까지 연 20척 건조</span></div>
+        <div class="detail-row"><span class="label">수요</span><span class="val">LNG 이중연료 추진, 코팅·자동화장비</span></div>
+        <div class="entry-section">
+          <div class="entry-title">🎯 조선기자재 진출 적합도: ★★★★★</div>
+          <div class="entry-item">LNG 추진 시스템·밸브·배관 공급 직접 연결</div>
+          <div class="entry-item">선박용 코팅·방청·도료 수요 즉각 발생</div>
+          <div class="entry-item">선박 자동화·항법장비 공급망 편입 가능</div>
+          <div class="entry-item">한화 계열사 네트워크로 초기 진입장벽 낮음</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="project-card" id="card-2" onclick="flyTo(1)">
+      <div class="project-header">
+        <div class="project-icon" style="background:#1a3d1a;">🏭</div>
+        <div>
+          <div class="project-name">② Rhoads Industries (잠수함 MRO)</div>
+          <div class="project-loc">📌 1900 Kitty Hawk Ave (Bldg 57), Philadelphia, PA 19112</div>
+        </div>
+      </div>
+      <div class="project-body">
+        <div class="tag-row">
+          <span class="tag tag-area">30만 sq ft (≈2.8만㎡)</span>
+          <span class="tag tag-invest">확장투자 $1억</span>
+          <span class="tag tag-jobs">+450명 고용</span>
+          <span class="tag tag-status">🟡 확장중</span>
+        </div>
+        <div class="detail-row"><span class="label">분야</span><span class="val">해군 잠수함 부품 제조·MRO</span></div>
+        <div class="detail-row"><span class="label">지원</span><span class="val">주정부 $400만 (2025.07)</span></div>
+        <div class="entry-section">
+          <div class="entry-title">🎯 조선기자재 진출 적합도: ★★★★☆</div>
+          <div class="entry-item">잠수함용 고강도 볼트·파이프 피팅 수요</div>
+          <div class="entry-item">MIL-SPEC 인증 취득 시 직납 가능</div>
+          <div class="entry-item">PMCEC 통해 DLA 벤더 등록 경로 확보</div>
+          <div class="entry-item">⚠ ABS/MIL-SPEC 인증 12~24개월 필요</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="project-card" id="card-3" onclick="flyTo(2)">
+      <div class="project-header">
+        <div class="project-icon" style="background:#2a1a00;">🏗️</div>
+        <div>
+          <div class="project-name">③ Greenway District (PA SITES)</div>
+          <div class="project-loc">📌 Philadelphia Navy Yard 남측 구역, Philadelphia, PA 19112</div>
+        </div>
+      </div>
+      <div class="project-body">
+        <div class="tag-row">
+          <span class="tag tag-area">54 acres (≈21.9만㎡)</span>
+          <span class="tag tag-area">건물 700,000 sq ft</span>
+          <span class="tag tag-invest">주정부 $3천만</span>
+          <span class="tag tag-status">🔵 개발예정</span>
+        </div>
+        <div class="detail-row"><span class="label">목표</span><span class="val">첨단제조·바이오 클러스터, 3만 일자리</span></div>
+        <div class="detail-row"><span class="label">민간</span><span class="val">Ensemble + Mosaic 공동개발</span></div>
+        <div class="entry-section">
+          <div class="entry-title">🎯 조선기자재 진출 적합도: ★★★★★ (한국 클러스터 최적 후보지)</div>
+          <div class="entry-item">한국-PA 조선기자재 클러스터 설립 최적지</div>
+          <div class="entry-item">PA SITES $3천만 + 민간 $2~3천만 레버리지 가능</div>
+          <div class="entry-item">조선기자재 테스트베드·R&D센터 동시 설치 가능</div>
+          <div class="entry-item">Navy Yard 내 한화·Rhoads와 도보 거리</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="project-card" id="card-4" onclick="flyTo(3)">
+      <div class="project-header">
+        <div class="project-icon" style="background:#2a0a2a;">⚗️</div>
+        <div>
+          <div class="project-name">④ MACH2 수소 허브</div>
+          <div class="project-loc">📌 Mid-Atlantic 광역 (필라델피아 중심 PA·DE·NJ 일대)</div>
+        </div>
+      </div>
+      <div class="project-body">
+        <div class="tag-row">
+          <span class="tag tag-area">광역 허브 (PA·DE·NJ)</span>
+          <span class="tag tag-invest">연방 최대 $9.5억</span>
+          <span class="tag tag-status">🟡 승인완료·추진중</span>
+        </div>
+        <div class="detail-row"><span class="label">에너지원</span><span class="val">그린수소 (비화석연료)</span></div>
+        <div class="detail-row"><span class="label">파트너</span><span class="val">UPenn, Drexel, DOE, 민간기업군</span></div>
+        <div class="entry-section">
+          <div class="entry-title">🎯 조선기자재 진출 적합도: ★★★☆☆ (중장기 기회)</div>
+          <div class="entry-item">수소 연료전지 선박용 압력용기·밸브 수요</div>
+          <div class="entry-item">PA EDGE 수소용 세액공제 활용 가능</div>
+          <div class="entry-item">그린십 전환 대비 중장기 포지셔닝</div>
+          <div class="entry-item">⚠ 연방예산 삭감 리스크 존재</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 5 -->
+    <div class="project-card" id="card-5" onclick="flyTo(4)">
+      <div class="project-header">
+        <div class="project-icon" style="background:#1a0a3a;">🔬</div>
+        <div>
+          <div class="project-name">⑤ Hazelwood Green (피츠버그)</div>
+          <div class="project-loc">📌 Lytle St & Eliza St, Pittsburgh, PA 15207</div>
+        </div>
+      </div>
+      <div class="project-body">
+        <div class="tag-row">
+          <span class="tag tag-area">178 acres (≈72만㎡)</span>
+          <span class="tag tag-status">🟡 개발진행중</span>
+        </div>
+        <div class="detail-row"><span class="label">성격</span><span class="val">첨단기술·혁신 클러스터 (CMU 인접)</span></div>
+        <div class="detail-row"><span class="label">특징</span><span class="val">모노강하하 강변, BioForge 입주예정</span></div>
+        <div class="entry-section">
+          <div class="entry-title">🎯 조선기자재 진출 적합도: ★★☆☆☆ (간접 연계)</div>
+          <div class="entry-item">선박 전자·소프트웨어 기업에 적합</div>
+          <div class="entry-item">CMU 연구역량 활용 가능 (자동화·AI)</div>
+          <div class="entry-item">조선 직접 수요 없음 → 기술개발 거점으로 활용</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">범례</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2196F3;"></div> 조선 시설 (한화·Rhoads)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FF9800;"></div> 개발 클러스터 (Greenway)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#9C27B0;"></div> 에너지 허브 (MACH2)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4CAF50;"></div> 혁신 클러스터 (피츠버그)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 지도 초기화 - 펜실베이니아 중심
+const map = L.map('map', {
+  center: [40.15, -75.8],
+  zoom: 9,
+  zoomControl: true
+});
+
+// 다크 테마 타일
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap, © CartoDB',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// 마커 데이터
+const projects = [
+  {
+    lat: 39.888, lng: -75.1780, zoom: 15,
+    color: '#2196F3',
+    name: '① 한화 필리 조선소',
+    area: '118 acres (≈47.7만㎡)',
+    invest: '$50억',
+    status: '🟢 가동중',
+    desc: '연 20척 목표 | LNG 듀얼퍼얼 추진 수요',
+    cardId: 'card-1'
+  },
+  {
+    lat: 39.886, lng: -75.174, zoom: 16,
+    color: '#F44336',
+    name: '② Rhoads Industries',
+    area: '300,000 sq ft (≈2.8만㎡)',
+    invest: '$1억 확장',
+    status: '🟡 확장중',
+    desc: '해군 잠수함 MRO | +450명 고용 | PMCEC 연계',
+    cardId: 'card-2'
+  },
+  {
+    lat: 39.893, lng: -75.170, zoom: 15,
+    color: '#FF9800',
+    name: '③ Greenway District (클러스터 후보지)',
+    area: '54 acres (≈21.9만㎡) | 건물 70만 sq ft',
+    invest: '주정부 $3천만',
+    status: '🔵 개발예정',
+    desc: '한국 기자재 클러스터 최적지 | PA SITES 지원',
+    cardId: 'card-3'
+  },
+  {
+    lat: 39.9526, lng: -75.1652, zoom: 10,
+    color: '#9C27B0',
+    name: '④ MACH2 수소 허브',
+    area: 'PA·DE·NJ 광역',
+    invest: '연방 최대 $9.5억',
+    status: '🟡 추진중',
+    desc: '그린수소 | 수소선박 기자재 중장기 수요',
+    cardId: 'card-4'
+  },
+  {
+    lat: 40.406, lng: -79.965, zoom: 13,
+    color: '#4CAF50',
+    name: '⑤ Hazelwood Green (피츠버그)',
+    area: '178 acres (≈72만㎡)',
+    invest: '민간주도 개발',
+    status: '🟡 개발진행중',
+    desc: '혁신·기술 클러스터 | CMU 인접 | 선박 전자·AI',
+    cardId: 'card-5'
+  }
+];
+
+const markers = [];
+
+projects.forEach((p, i) => {
+  // 커스텀 아이콘
+  const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 50" width="40" height="50">
+    <path d="M20 0 C9 0 0 9 0 20 C0 35 20 50 20 50 C20 50 40 35 40 20 C40 9 31 0 20 0Z" fill="${p.color}" opacity="0.9"/>
+    <circle cx="20" cy="20" r="10" fill="white" opacity="0.3"/>
+    <text x="20" y="25" text-anchor="middle" fill="white" font-size="14" font-weight="bold">${i+1}</text>
+  </svg>`;
+  
+  const icon = L.divIcon({
+    html: svgIcon,
+    iconSize: [40, 50],
+    iconAnchor: [20, 50],
+    popupAnchor: [0, -50],
+    className: ''
+  });
+
+  const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
+  
+  // 팝업
+  const popup = `
+    <div style="font-family:'Segoe UI',sans-serif;min-width:220px;">
+      <div style="background:${p.color};padding:8px 12px;border-radius:6px 6px 0 0;font-weight:700;color:white;font-size:13px;">${p.name}</div>
+      <div style="padding:10px 12px;background:#0d1f38;">
+        <div style="font-size:11px;color:#8fa8c8;margin-bottom:4px;">📐 면적: <span style="color:#7ab8f5">${p.area}</span></div>
+        <div style="font-size:11px;color:#8fa8c8;margin-bottom:4px;">💰 투자: <span style="color:#6dce6d">${p.invest}</span></div>
+        <div style="font-size:11px;color:#8fa8c8;margin-bottom:6px;">상태: ${p.status}</div>
+        <div style="font-size:11px;color:#c8dff5;border-top:1px solid #1e3d6e;padding-top:6px;">${p.desc}</div>
+      </div>
+    </div>`;
+  
+  marker.bindPopup(popup, {
+    maxWidth: 280,
+    className: 'popup-custom'
+  });
+  
+  markers.push({ marker, zoom: p.zoom });
+});
+
+// 필라델피아 Navy Yard 범위 표시
+const navyYardBounds = [
+  [39.882, -75.182],
+  [39.882, -75.163],
+  [39.898, -75.163],
+  [39.898, -75.182]
+];
+L.polygon(navyYardBounds, {
+  color: '#2196F3',
+  fillColor: '#2196F3',
+  fillOpacity: 0.08,
+  weight: 2,
+  dashArray: '6 4'
+}).addTo(map).bindTooltip('Philadelphia Navy Yard 전체 부지 (~295 acres)', {
+  permanent: false,
+  direction: 'top'
+});
+
+// Greenway District 범위 강조
+const greenwayBounds = [
+  [39.889, -75.175],
+  [39.889, -75.167],
+  [39.895, -75.167],
+  [39.895, -75.175]
+];
+L.polygon(greenwayBounds, {
+  color: '#FF9800',
+  fillColor: '#FF9800',
+  fillOpacity: 0.12,
+  weight: 2,
+  dashArray: '4 4'
+}).addTo(map).bindTooltip('Greenway District (54 acres) - 클러스터 후보지', {
+  permanent: false,
+  direction: 'top'
+});
+
+function flyTo(idx) {
+  const p = markers[idx];
+  map.flyTo([projects[idx].lat, projects[idx].lng], p.zoom, { duration: 1.2 });
+  p.marker.openPopup();
+  
+  // 카드 활성화
+  document.querySelectorAll('.project-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('card-' + (idx+1)).classList.add('active');
+}
+
+// 마커 클릭 시 카드 활성화
+markers.forEach((m, i) => {
+  m.marker.on('click', () => {
+    document.querySelectorAll('.project-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('card-' + (i+1)).classList.add('active');
+  });
+});
+</script>
 </body>
 </html>
