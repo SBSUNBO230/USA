@@ -2,16 +2,23 @@
 
 ## Project Overview
 
-Interactive single-page web application displaying a map of Pennsylvania shipbuilding and energy projects, targeting Korean shipbuilding materials (조선기자재) investment opportunities. Built as a static HTML file with no build system or dependencies beyond a CDN-loaded mapping library.
+Static web projects built with pure HTML/CSS/JavaScript. No frameworks, no build tools, no package manager.
+
+### Pages
+
+- **index.html** — Interactive map of Pennsylvania shipbuilding and energy projects (dark theme, Leaflet.js)
+- **blog.html** — "Ella의 이야기" personal project blog (light/minimal theme)
 
 ## Repository Structure
 
 ```
 USA/
-└── index.html    # Entire application (HTML + CSS + JS, ~440 lines)
+├── index.html    # PA 조선·에너지 프로젝트 지도 (~440 lines)
+├── blog.html     # Ella의 이야기 블로그 (~240 lines)
+└── CLAUDE.md     # This file
 ```
 
-This is a **single-file project** — all markup, styles, and logic live in `index.html`.
+Each page is a **self-contained single file** — all markup, styles, and logic are inline.
 
 ## Tech Stack
 
