@@ -1,0 +1,83 @@
+# CLAUDE.md
+
+## Project Overview
+
+Static web projects built with pure HTML/CSS/JavaScript. No frameworks, no build tools, no package manager.
+
+### Pages
+
+- **index.html** — Interactive map of Pennsylvania shipbuilding and energy projects (dark theme, Leaflet.js)
+- **blog.html** — "Ella의 이야기" personal project blog (light/minimal theme)
+
+## Repository Structure
+
+```
+USA/
+├── index.html    # PA 조선·에너지 프로젝트 지도 (~440 lines)
+├── blog.html     # Ella의 이야기 블로그 (~240 lines)
+└── CLAUDE.md     # This file
+```
+
+Each page is a **self-contained single file** — all markup, styles, and logic are inline.
+
+## Tech Stack
+
+- **HTML/CSS/JavaScript** — no frameworks, no build tools, no package manager
+- **Leaflet.js v1.9.4** — interactive map library, loaded from unpkg CDN
+- **Map tiles** — CartoDB dark theme (`dark_all`)
+- **Language** — Korean (`lang="ko"`) with English project names
+
+## Architecture
+
+### Data Model
+
+Five project objects in a `const projects` array, each with:
+- `lat`, `lng`, `zoom` — map coordinates and zoom level
+- `color` — marker color
+- `name`, `area`, `invest`, `status`, `desc`, `cardId` — display content
+
+### UI Layout
+
+- Two-column flexbox layout: left map (65%) + right sidebar cards (35%)
+- Responsive breakpoint at 768px switches to single column
+- Dark theme with navy/midnight blue backgrounds
+
+### Key Functions
+
+- `flyTo(idx)` — animates map to a project's coordinates
+- Markers use custom `L.divIcon` with inline SVG
+- Polygons define Navy Yard and Greenway District boundaries
+- Cards and markers are linked via click handlers
+
+## Development Workflow
+
+### Running Locally
+
+Open `index.html` directly in a browser. No server, build step, or install required.
+
+### Making Changes
+
+1. Edit `index.html` directly
+2. Refresh browser to see changes
+3. All CSS is in a `<style>` block; all JS is in a `<script>` block at the end
+
+### No Build/Test/Lint
+
+- No package.json, no npm scripts
+- No test framework
+- No linter or formatter configured
+- No CI/CD pipeline
+
+## Conventions
+
+- **CSS classes**: BEM-inspired naming (`project-card`, `project-header`, `project-icon`)
+- **IDs**: Cards use `card-1` through `card-5`
+- **Colors**: Accent `#7ab8f5`, success `#6dce6d`, warning `#f5c842`
+- **No modules** — vanilla JS with functional style
+- **Inline everything** — styles and scripts are embedded, not in separate files
+
+## Git
+
+- Default branch: `main`
+- Signed commits enabled (`gpg.format=ssh`)
+- Commit messages should describe what changed and why
